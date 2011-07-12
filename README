@@ -1,0 +1,5 @@
+
+This is a program that helps with compiling and installing the linux kernel.
+It will even install a kernel on a remote machine.  This is great for working
+with virtual machines.  I often use two virtual machines, one is for hacking on
+the kernel, the other is for testing new kernels.
