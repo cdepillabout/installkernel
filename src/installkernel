@@ -430,6 +430,8 @@ def main():
             help="run `make menuconfig` first")
     make_config_group.add_argument('--make-oldconfig', '-o', action='store_true',
             help="run `make oldconfig` first")
+    make_config_group.add_argument('--make-localmodconfig', '-l', action='store_true',
+            help="run `make localmodconfig` first")
 
     build_dir_group = parser.add_mutually_exclusive_group()
     build_dir_group.add_argument('--build-dir', '-b', action='store',
@@ -469,7 +471,7 @@ def main():
     temp_mod_install_dir = ""
 
     # make the builddir if it doesn't exist
-    if args.make or args.make_install_modules or args.make_menuconfig:
+    if args.make or args.make_install_modules or args.make_menuconfig or args.make_localmodconfig:
         run_command(function=(lambda: mkdir_no_error(builddir)))
 
     # make ctags
@@ -481,6 +483,8 @@ def main():
         run_command("make %s menuconfig" % build_dir_arg)
     if args.make_oldconfig:
         run_command("make %s oldconfig" % build_dir_arg)
+    if args.make_localmodconfig:
+        run_command("make %s localmodconfig" % build_dir_arg)
 
     # if there is no .config in the builddir, and we are trying to run make,
     # then this is a problem
@@ -518,10 +522,16 @@ def main():
                 install_kernel_modules_local(build_dir_arg, temp_mod_install_dir)
         return
 
-    # we are not running make or installing modules, so hopefully 
+    # we are not running make or installing modules, so hopefully
     # we are doing something else.
-    if (not args.ctags and not args.make_menuconfig and not args.make_oldconfig
-            and not args.make and not args.make_install_modules and not args.install_kernel):
+    if (not args.ctags and
+        not args.make_menuconfig and
+        not args.make_oldconfig and
+        not args.make_localmodconfig and
+        not args.make and
+        not args.make_install_modules and
+        not args.install_kernel):
+
         sys.stderr.write("ERROR! Not specified to do anything.\n")
 
 
