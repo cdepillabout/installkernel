@@ -425,6 +425,12 @@ def main():
     parser.add_argument('--ctags', '-t', action='store_true',
             help="run `make tags`")
 
+    parser.add_argument('--make-help', '-e', action='store_true',
+            help="run `make help`")
+
+    parser.add_argument('--clean', '-r', action='store_true',
+            help="run `make clean`")
+
     make_config_group = parser.add_mutually_exclusive_group()
     make_config_group.add_argument('--make-menuconfig', '-c', action='store_true',
             help="run `make menuconfig` first")
@@ -471,12 +477,26 @@ def main():
     temp_mod_install_dir = ""
 
     # make the builddir if it doesn't exist
-    if args.make or args.make_install_modules or args.make_menuconfig or args.make_localmodconfig:
+    if (args.make or
+            args.make_install_modules or
+            args.make_menuconfig or
+            args.make_localmodconfig or
+            args.make_help or
+            args.clean or
+            args.ctags):
         run_command(function=(lambda: mkdir_no_error(builddir)))
+
+    # make clean
+    if args.clean:
+        run_command("make %s clean" % build_dir_arg)
 
     # make ctags
     if args.ctags:
         run_command("make %s tags" % build_dir_arg)
+
+    # make help
+    if args.make_help:
+        run_command("make %s help" % build_dir_arg)
 
     # run menuconfig
     if args.make_menuconfig:
@@ -525,13 +545,14 @@ def main():
     # we are not running make or installing modules, so hopefully
     # we are doing something else.
     if (not args.ctags and
-        not args.make_menuconfig and
-        not args.make_oldconfig and
-        not args.make_localmodconfig and
-        not args.make and
-        not args.make_install_modules and
-        not args.install_kernel):
-
+            not args.clean and
+            not args.make_help and
+            not args.make_menuconfig and
+            not args.make_oldconfig and
+            not args.make_localmodconfig and
+            not args.make and
+            not args.make_install_modules and
+            not args.install_kernel):
         sys.stderr.write("ERROR! Not specified to do anything.\n")
 
 
