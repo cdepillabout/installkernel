@@ -363,6 +363,9 @@ def install_kernel_modules_local(build_dir_arg, tempmoddir):
     real_modpath = "/lib/modules/%s" % release
     install_file(os.path.join(tempmoddir, temp_modpath), real_modpath, delete=True, directory=True)
 
+def mkinitcpio_and_grub(build_dir_arg, builddir):
+    sys.stderr.write("ERROR: mkinitcpio_and_grub method has not been implemented yet\n")
+    sys.exit(1)
 
 def install_kernel_remote(build_dir_arg, builddir, remotehost):
     """
@@ -394,9 +397,37 @@ def install_kernel_modules_remote(build_dir_arg, remotehost, tempmoddir):
     release, _ = get_kernel_release_arch(build_dir_arg)
     local_modpath = "lib/modules/%s" % release
     remote_modpath = "/lib/modules/"
-    remote_install_file(remotehost, os.path.join(tempmoddir, local_modpath), 
+    remote_install_file(remotehost, os.path.join(tempmoddir, local_modpath),
             remote_modpath, delete=True)
 
+def mkinitcpio_and_grub_remote(build_dir_arg, builddir, remotehost):
+    """
+    Run mkinitcpio and grub-mkconfig on the remote machine.
+    """
+
+    _, bzimage_remote_install_path = get_bzimage(build_dir_arg, builddir)
+    release, _ = get_kernel_release_arch(build_dir_arg)
+
+    mkinitcpio_cmd = \
+            "mkinitcpio -k %s -c /etc/mkinitcpio.conf -g /boot/initramfs-%s" % \
+            (bzimage_remote_install_path, release)
+    #grub_cmd = "grub-mkconfig -o /boot/grub/grub.cfg"
+
+    # This is the command to create hardlinks to the new kernel at a set name.
+    # This is being used so the grub config can be constant.
+    link_bzimage = "ln -f bzImage-%s bzImage-my-test-kernel" % release
+    link_config = "ln -f config-%s config-my-test-kernel" % release
+    link_systemmap = "ln -f System.map-%s System.map-my-test-kernel" % release
+    link_initramfs = "ln -f initramfs-%s initramfs-my-test-kernel" % release
+    link_cmd = "( cd /boot && %s && %s && %s && %s )" % \
+            (link_bzimage, link_config, link_systemmap, link_initramfs)
+
+    mkinitcpio_and_grub_cmd = \
+            "%s && %s" % \
+            (mkinitcpio_cmd, link_cmd)
+
+    command = "ssh %s \" %s \"" % (remotehost, mkinitcpio_and_grub_cmd)
+    run_command(command)
 
 def main():
     default_use_ccache = inPATH("ccache")
@@ -415,6 +446,9 @@ def main():
 
     parser.add_argument('--install-kernel', '-k', action='store_true',
             help="install kernel image to /boot")
+
+    parser.add_argument('--run-mkinitcpio-and-grub-mkconfig', '-p', action='store_true',
+            help="run mkinitcpio and grub-mkconfig after installing kernel")
 
     parser.add_argument('--ssh', '-s', action='store', metavar='REMOTE_MACHINE',
             help="use ssh to copy kernel to REMOTE_MACHINE")
@@ -525,26 +559,36 @@ def main():
         run_command(command="make %s %s %s modules_install" %
                 (temp_install_dir_arg, build_dir_arg, ccache_arg))
 
-    if args.install_kernel or args.make_install_modules:
+    if args.install_kernel or \
+            args.make_install_modules or \
+            args.run_mkinitcpio_and_grub_mkconfig:
         if args.ssh:
             try:
                 if args.install_kernel:
                     install_kernel_remote(build_dir_arg, builddir, args.ssh)
                 if args.make_install_modules:
-                    install_kernel_modules_remote(build_dir_arg, args.ssh, temp_mod_install_dir)
+                    install_kernel_modules_remote(build_dir_arg,
+                            args.ssh,
+                            temp_mod_install_dir)
+                if args.run_mkinitcpio_and_grub_mkconfig:
+                    mkinitcpio_and_grub_remote(build_dir_arg, builddir, args.ssh)
             except CommandError as e:
-                sys.stderr.write("ERROR: Cannot install kernel or modules remotely: %s.\n" % e)
+                sys.stderr.write(
+                        "ERROR: Cannot install kernel or modules remotely: %s.\n" % e)
                 sys.exit(1)
         else:
             if args.install_kernel:
                 install_kernel_local(build_dir_arg, builddir)
             if args.make_install_modules:
                 install_kernel_modules_local(build_dir_arg, temp_mod_install_dir)
+            if args.run_mkinitcpio_and_grub_mkconfig:
+                mkinitcpio_and_grub(build_dir_arg, builddir)
         return
 
     # we are not running make or installing modules, so hopefully
     # we are doing something else.
     if (not args.ctags and
+            not args.run_mkinitcpio_and_grub_mkconfig and
             not args.clean and
             not args.make_help and
             not args.make_menuconfig and
