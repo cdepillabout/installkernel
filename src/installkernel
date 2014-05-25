@@ -363,9 +363,14 @@ def install_kernel_modules_local(build_dir_arg, tempmoddir):
     real_modpath = "/lib/modules/%s" % release
     install_file(os.path.join(tempmoddir, temp_modpath), real_modpath, delete=True, directory=True)
 
-def mkinitcpio_and_grub(build_dir_arg, builddir):
-    sys.stderr.write("ERROR: mkinitcpio_and_grub method has not been implemented yet\n")
+def mkinitcpio_and_grub_local(build_dir_arg, builddir):
+    sys.stderr.write("ERROR: mkinitcpio_and_grub_local method has not been implemented yet\n")
     sys.exit(1)
+
+def reboot_local():
+    sys.stderr.write("ERROR: reboot_local method has not been implemented yet\n")
+    sys.exit(1)
+    pass
 
 def install_kernel_remote(build_dir_arg, builddir, remotehost):
     """
@@ -429,6 +434,14 @@ def mkinitcpio_and_grub_remote(build_dir_arg, builddir, remotehost):
     command = "ssh %s \" %s \"" % (remotehost, mkinitcpio_and_grub_cmd)
     run_command(command)
 
+def reboot_remote(remotehost):
+    """
+    Reboot the remote machine.
+    """
+    reboot_cmd = "nohup bash -c 'sleep 1 && reboot' > /dev/null &"
+    command = "ssh %s \" %s \"" % (remotehost, reboot_cmd)
+    run_command(command)
+
 def main():
     default_use_ccache = inPATH("ccache")
     ccache_help = "use ccache when compiling kernel"
@@ -449,6 +462,9 @@ def main():
 
     parser.add_argument('--run-mkinitcpio-and-grub-mkconfig', '-p', action='store_true',
             help="run mkinitcpio and grub-mkconfig after installing kernel")
+
+    parser.add_argument('--reboot', '-R', action='store_true',
+            help="reboot machine")
 
     parser.add_argument('--ssh', '-s', action='store', metavar='REMOTE_MACHINE',
             help="use ssh to copy kernel to REMOTE_MACHINE")
@@ -544,7 +560,8 @@ def main():
     # then this is a problem
     if args.make or args.make_install_modules:
         if not os.path.exists(os.path.join(builddir, ".config")):
-            sys.stderr.write("No kernel .config in build dir %s. Do you need to run make menuconfig?\n" %
+            sys.stderr.write(
+                    "No kernel .config in build dir %s. Run make menuconfig?\n" %
                     os.path.abspath(builddir))
             sys.exit(1)
 
@@ -561,6 +578,7 @@ def main():
 
     if args.install_kernel or \
             args.make_install_modules or \
+            args.reboot or \
             args.run_mkinitcpio_and_grub_mkconfig:
         if args.ssh:
             try:
@@ -572,6 +590,8 @@ def main():
                             temp_mod_install_dir)
                 if args.run_mkinitcpio_and_grub_mkconfig:
                     mkinitcpio_and_grub_remote(build_dir_arg, builddir, args.ssh)
+                if args.reboot:
+                    reboot_remote(args.ssh)
             except CommandError as e:
                 sys.stderr.write(
                         "ERROR: Cannot install kernel or modules remotely: %s.\n" % e)
@@ -582,13 +602,16 @@ def main():
             if args.make_install_modules:
                 install_kernel_modules_local(build_dir_arg, temp_mod_install_dir)
             if args.run_mkinitcpio_and_grub_mkconfig:
-                mkinitcpio_and_grub(build_dir_arg, builddir)
+                mkinitcpio_and_grub_local(build_dir_arg, builddir)
+            if args.reboot:
+                reboot_local(args.ssh)
         return
 
     # we are not running make or installing modules, so hopefully
     # we are doing something else.
     if (not args.ctags and
             not args.run_mkinitcpio_and_grub_mkconfig and
+            not args.reboot and
             not args.clean and
             not args.make_help and
             not args.make_menuconfig and
