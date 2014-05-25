@@ -326,9 +326,13 @@ def remote_install_file(remotehost, file_name, remote_install_path, copy_link=Fa
             (link_flag, delete_flag, file_name, remotehost, remote_install_path)
     run_command(command)
 
+def delete_old_kernels_local(build_dir_arg, builddir):
+    sys.stderr.write("ERROR: delete_old_kernels_local() has not been implemented yet\n")
+    sys.exit(1)
+
 def install_kernel_local(build_dir_arg, builddir):
     """
-    Install a kernel on the local system. 
+    Install a kernel on the local system.
     build_dir_arg is a string to pass to make to tell it where the kernel
     sources are.  It is something like "O=." or "O=./build".
     builddir is the actual build directory.  It is something like "." or "./build".
@@ -371,6 +375,28 @@ def reboot_local():
     sys.stderr.write("ERROR: reboot_local method has not been implemented yet\n")
     sys.exit(1)
     pass
+
+def delete_old_kernels_remote(build_dir_arg, builddir, remotehost):
+    """
+    Delete all the old kernels in /boot that contain the string in
+    CONFIG_LOCALVERSION.  If CONFIG_LOCALVERSION is empty, then
+    we bail out.
+    """
+    # get CONFIG_LOCALVERSION
+    config_path = os.path.join(builddir, ".config")
+    config_contents = open(config_path).read()
+
+    match = re.search(r'^CONFIG_LOCALVERSION="?(.*?)"?$', config_contents, re.M)
+    if match is None or len(match.groups()) != 1 or match.group(1) == "":
+        sys.stderr.write("ERROR: When trying to look for CONFIG_LOCALVERSION in " +
+                "%s, could not find it.  This needs to be specified." % config_path)
+        sys.exit(1)
+
+    localversion_string = match.group(1)
+
+    reboot_cmd = "rm -f /boot/*%s*" % localversion_string
+    command = "ssh %s \" %s \"" % (remotehost, reboot_cmd)
+    run_command(command)
 
 def install_kernel_remote(build_dir_arg, builddir, remotehost):
     """
@@ -457,6 +483,9 @@ def main():
     parser.add_argument('--make-install-modules', '-i', action='store_true',
             help="run `make modules_install`")
 
+    parser.add_argument('--delete-old-kernels', '-D', action='store_true',
+            help="delete old kernels in /boot")
+
     parser.add_argument('--install-kernel', '-k', action='store_true',
             help="install kernel image to /boot")
 
@@ -532,6 +561,7 @@ def main():
             args.make_menuconfig or
             args.make_localmodconfig or
             args.make_help or
+            args.delete_old_kernels or
             args.clean or
             args.ctags):
         run_command(function=(lambda: mkdir_no_error(builddir)))
@@ -579,9 +609,12 @@ def main():
     if args.install_kernel or \
             args.make_install_modules or \
             args.reboot or \
+            args.delete_old_kernels or \
             args.run_mkinitcpio_and_grub_mkconfig:
         if args.ssh:
             try:
+                if args.delete_old_kernels:
+                    delete_old_kernels_remote(build_dir_arg, builddir, args.ssh)
                 if args.install_kernel:
                     install_kernel_remote(build_dir_arg, builddir, args.ssh)
                 if args.make_install_modules:
@@ -597,6 +630,8 @@ def main():
                         "ERROR: Cannot install kernel or modules remotely: %s.\n" % e)
                 sys.exit(1)
         else:
+            if args.delete_old_kernels:
+                delete_old_kernels_local(build_dir_arg, builddir)
             if args.install_kernel:
                 install_kernel_local(build_dir_arg, builddir)
             if args.make_install_modules:
@@ -612,6 +647,7 @@ def main():
     if (not args.ctags and
             not args.run_mkinitcpio_and_grub_mkconfig and
             not args.reboot and
+            not args.delete_old_kernels and
             not args.clean and
             not args.make_help and
             not args.make_menuconfig and
