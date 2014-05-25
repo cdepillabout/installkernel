@@ -3,3 +3,12 @@ This is a program that helps with compiling and installing the linux kernel.
 It will even install a kernel on a remote machine.  This is great for working
 with virtual machines.  I often use two virtual machines, one is for hacking on
 the kernel, the other is for testing new kernels.
+
+# This command will make the kernel, install it on the remote machine,
+# install the modules on the remote machine, delete old kernels on the
+# remote machine, and run mkinitcpio and grub-mkconfig.  After all this
+# it reboots the machine.
+time installkernel -s vbox-arch-kernel-testing -m -D -i -k -p -R
+
+# This command will rsync the kernel source to the remote machine.
+rsyncp -q --delete . illabout-vbox-arch-kernel-testing:`pwd`
