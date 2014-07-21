@@ -165,7 +165,7 @@ def run_command(command=None, function=None, dropprivs=True,
 
 
 
-        # need to get this 
+        # need to get this
         cur_user_name = pwd.getpwuid(os.getuid()).pw_name
 
         # set the USER, LOGNAME, and HOME env vars correctly
@@ -183,7 +183,7 @@ def run_command(command=None, function=None, dropprivs=True,
 
             retcode = process.wait()
             if retcode < 0:
-                sys.stderr.write("ERROR: `%s` was terminated by signal %s.\n" % 
+                sys.stderr.write("ERROR: `%s` was terminated by signal %s.\n" %
                         (command, -retcode))
                 sys.exit(1)
             elif retcode > 0:
