@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 cleanup_dirs = []
 
@@ -477,7 +478,17 @@ def main():
     else:
         no_ccache_help += " (default)"
 
-    parser = argparse.ArgumentParser(description="Install the current kernel.")
+    parser = argparse.ArgumentParser(
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description="Install the current kernel.",
+            epilog=textwrap.dedent("""
+                Examples:
+
+                Run `make` in the build directory, install modules, delete old kernels
+                in /boot, install the new kernel image to /boot, run mkinitcpio and
+                grub-mkconfig after installing kernel to /boot, and reboot machine.
+
+                $ installkernel -s REMOTE_MACHINE_HOSTNAME -m -D -i -k -p -R"""))
     parser.add_argument('--make', '-m', action='store_true',
             help="run `make`")
     parser.add_argument('--make-install-modules', '-i', action='store_true',
