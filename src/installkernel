@@ -245,7 +245,7 @@ def get_kernel_release_arch(build_dir_arg):
     sources are.  It is something like "O=." or "O=./build".
     """
     # get the kernel release (somethingl like 2.6.34-MY-KERNEL)
-    p = subprocess.Popen(["make", "%s" % build_dir_arg, "kernelrelease"], 
+    p = subprocess.Popen(["make", "--quiet", "%s" % build_dir_arg, "kernelrelease"],
             stdout=subprocess.PIPE)
     release = p.communicate()[0].strip()
 
